@@ -1,5 +1,5 @@
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v2";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v3";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const $ = (s)=>document.querySelector(s);
@@ -9,7 +9,7 @@ function setTheme(theme){
   document.documentElement.setAttribute("data-theme", t);
 }
 
-function fmtKoreanStamp(iso){
+function fmtKoreanTime(iso){
   const d = new Date(iso.replace(" ", "T"));
   const y = d.getFullYear();
   const mo = String(d.getMonth()+1).padStart(2,"0");
@@ -63,8 +63,8 @@ function removePhoto(){
 }
 
 function render(payload){
-  const stampText = $("#stampText");
-  if(stampText) stampText.textContent = payload?.at ? fmtKoreanStamp(payload.at) : "";
+  const timeEl = $("#settleTime");
+  timeEl.textContent = payload?.at ? fmtKoreanTime(payload.at) : "";
 
   const wrap = $("#summary");
   if(!payload?.lines?.length){
@@ -72,35 +72,40 @@ function render(payload){
     return;
   }
 
-  const blocks = payload.lines.map((x)=>{
+  const cards = payload.lines.map((x)=>{
     const name = escapeHTML(x.name);
     const total = `${x.total}점`;
     const goal = `${x.goalCount}번`;
     const re = `${x.reCount}번`;
     const xs = `${x.xCount}번`;
     const ranks = escapeHTML(x.summary);
+    const mvp = x.isMvp ? `<span class="mvpTag">👑 MVP</span>` : "";
 
     return `
-      <div class="finalBlock">
-        <div class="finalTitle">✨ ${name} ✨</div>
+      <div class="finalCard ${x.isMvp ? "finalMvp" : ""}">
+        <div class="finalHead">
+          <div class="finalName">✨ ${name} ✨ ${mvp}</div>
+          <div class="finalScore">${total}</div>
+        </div>
         <div class="finalLine">━━━━━━━━━━━━━━━━━━━━</div>
-        <div class="finalRow"><span class="k">최종점수</span><span class="v">→ ${total}</span></div>
-        <div class="finalRow"><span class="k">골인 수</span><span class="v">→ ${goal}</span></div>
-        <div class="finalRow"><span class="k">리타 수</span><span class="v">→ ${re}</span></div>
-        <div class="finalRow"><span class="k">초사 수</span><span class="v">→ ${xs}</span></div>
-        <div class="finalRow finalRanks"><span class="k">30판 등수</span><span class="v">→ ${ranks}</span></div>
+        <div class="finalGrid">
+          <div class="kv"><div class="k">골인 수</div><div class="v">${goal}</div></div>
+          <div class="kv"><div class="k">리타 수</div><div class="v">${re}</div></div>
+          <div class="kv"><div class="k">초사 수</div><div class="v">${xs}</div></div>
+          <div class="kv kvWide"><div class="k">30판 등수</div><div class="v">${ranks}</div></div>
+        </div>
       </div>
     `;
   }).join("");
 
-  wrap.innerHTML = `<div class="finalList">${blocks}</div>`;
+  wrap.innerHTML = `<div class="finalGridWrap">${cards}</div>`;
 }
 
 function bind(){
   $("#back").onclick = ()=>{ location.href = "index.html"; };
   $("#removePhoto").onclick = removePhoto;
 
-  $("#photo").addEventListener("change", (e)=>{
+  $("#photo").addEventListener("change",(e)=>{
     const f = e.target.files?.[0];
     if(!f) return;
     const reader = new FileReader();
@@ -116,7 +121,8 @@ function bind(){
 function init(){
   setTheme(localStorage.getItem(THEME_KEY) || "dark");
   bind();
-  render(loadPayload());
+  const payload = loadPayload();
+  render(payload);
   showPhoto(loadPhoto());
 }
 
