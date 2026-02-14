@@ -1,5 +1,5 @@
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v3";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v4";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const $ = (s)=>document.querySelector(s);
@@ -10,7 +10,7 @@ function setTheme(theme){
 }
 
 function fmtKoreanTime(iso){
-  const d = new Date(iso.replace(" ", "T"));
+  const d = new Date(String(iso || "").replace(" ", "T"));
   const y = d.getFullYear();
   const mo = String(d.getMonth()+1).padStart(2,"0");
   const da = String(d.getDate()).padStart(2,"0");
@@ -72,7 +72,10 @@ function render(payload){
     return;
   }
 
-  const cards = payload.lines.map((x)=>{
+  const sorted = [...payload.lines].sort((a,b)=> (b.total||0) - (a.total||0));
+  if(sorted[0]) sorted[0].isMvp = true;
+
+  const cards = sorted.map((x)=>{
     const name = escapeHTML(x.name);
     const total = `${x.total}점`;
     const goal = `${x.goalCount}번`;
