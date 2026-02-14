@@ -320,4 +320,5 @@ function init(){
   bind();
   render();
 }
+
 init();
