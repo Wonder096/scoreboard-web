@@ -1,4 +1,4 @@
-const KEY = "talse_runner_scoreboard_v6";
+const KEY = "talse_runner_scoreboard_v7";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const SETTINGS = {
@@ -17,6 +17,7 @@ const DEFAULT = {
   history: []
 };
 
+const ORD = ["첫번째", "두번째", "세번째", "네번째"];
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
 
@@ -90,11 +91,11 @@ function nowISO(){
 
 function parseToken(token){
   const t = String(token||"").trim().toLowerCase().replace(/\s+/g,"");
-  if(!t) throw new Error("빈 입력");
+  if(!t) throw new Error("입력이 비어 있어요");
   const m = t.match(/^(\d+)(.*)$/);
-  if(!m) throw new Error("등수 숫자가 없다");
+  if(!m) throw new Error("등수 숫자가 필요해요");
   const rank = safeInt(m[1], 0);
-  if(rank < 1 || rank > 8) throw new Error("등수는 1~8만 가능");
+  if(rank < 1 || rank > 8) throw new Error("등수는 1~8만 가능해요");
   const rest = m[2] || "";
   const re = rest.includes("re") || rest.includes("리") || rest.includes("리타");
   const x  = rest.includes("x")  || rest.includes("초") || rest.includes("초사");
@@ -116,8 +117,9 @@ function escapeHTML(s){
     .replaceAll("'","&#039;");
 }
 
-function fmtSigned(n){
-  return (n >= 0 ? `+${n}` : `${n}`);
+function fmtSignedPretty(n){
+  if(n === 0) return "±0점";
+  return (n > 0 ? `+${n}점` : `${n}점`);
 }
 
 function computeBestPossibleFinalByBase(state){
@@ -131,16 +133,20 @@ function computeBestPossibleFinalByBase(state){
   return Math.max(0, maxTotal - penalty);
 }
 
+function isFinished(state){
+  return (state.history?.length || 0) >= SETTINGS.totalGames;
+}
+
 function buildBoard(state){
   ensureTotals(state);
 
   const games = state.history.length;
   const remain = Math.max(0, SETTINGS.totalGames - games);
-
   const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
 
   const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
   const bestPossibleFinal = computeBestPossibleFinalByBase(state);
+  const diff = bestPossibleFinal - maxTotal;
 
   const names = normalizeNames(state.players).filter(Boolean);
   const rows = names.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
@@ -157,7 +163,7 @@ function buildBoard(state){
       </div>
       <div class="box">
         <div class="t">최고 점수</div>
-        <div class="v">${bestPossibleFinal}점 <span class="diff">(기준 ${maxTotal}점 대비 ${fmtSigned(bestPossibleFinal - maxTotal)})</span></div>
+        <div class="v">${bestPossibleFinal}점 <span class="diff">(${fmtSignedPretty(diff)})</span></div>
       </div>
     </div>
   `;
@@ -201,6 +207,8 @@ function ensureEditButton(){
     $("#savePlayers").style.display = "inline-flex";
     btn.style.display = "none";
     $("#regStatus").textContent = "수정 중";
+    const first = $("#playerInputs input");
+    if(first) first.focus();
   };
 }
 
@@ -208,6 +216,27 @@ function clearScoreInputs(){
   $$("#scoreInputs input").forEach(i=>{ i.value = ""; });
   const first = $("#scoreInputs input");
   if(first) first.focus();
+}
+
+function moveFocus(containerSel, idx){
+  const list = $$(containerSel + " input");
+  const next = list[idx+1];
+  if(next) next.focus();
+}
+
+function applyFinishedLock(){
+  const done = isFinished(window.__state);
+
+  const addBtn = $("#addRound");
+  const clearBtn = $("#clearInputs");
+  const undoBtn = $("#undoRound");
+
+  $$("#scoreInputs input").forEach(i=>{ i.disabled = done; });
+
+  if(addBtn) addBtn.disabled = done;
+  if(clearBtn) clearBtn.disabled = done;
+
+  if(undoBtn) undoBtn.disabled = false;
 }
 
 function render(){
@@ -219,14 +248,20 @@ function render(){
   pWrap.innerHTML = "";
   for(let i=0;i<SETTINGS.rosterSize;i++){
     const inp = document.createElement("input");
-    inp.placeholder = `${i+1}번 닉네임`;
+    inp.placeholder = `${ORD[i]} 닉네임`;
     inp.value = state.players[i] || "";
+    inp.addEventListener("keydown",(e)=>{
+      if(e.key === "Enter"){
+        e.preventDefault();
+        moveFocus("#playerInputs", i);
+      }
+    });
     pWrap.appendChild(inp);
   }
 
   const registered = isRegistered(state);
 
-  $("#regStatus").textContent = registered ? "등록 완료" : "미등록";
+  $("#regStatus").textContent = registered ? "등록 완료" : "아직 미등록";
   lockRegisterUI(registered);
 
   $("#scoreCard").classList.toggle("hidden", !registered);
@@ -242,7 +277,7 @@ function render(){
 
     const lab = document.createElement("div");
     lab.className = "label";
-    lab.textContent = names[i] || `${i+1}번`;
+    lab.textContent = names[i] || `${ORD[i]} 선수`;
     wrap.appendChild(lab);
 
     const inp = document.createElement("input");
@@ -250,7 +285,11 @@ function render(){
     inp.addEventListener("keydown", (e)=>{
       if(e.key === "Enter"){
         e.preventDefault();
-        addRound();
+        if(i < SETTINGS.rosterSize - 1){
+          moveFocus("#scoreInputs", i);
+        }else{
+          addRound();
+        }
       }
       if(e.key === "Escape"){
         e.preventDefault();
@@ -266,8 +305,9 @@ function render(){
     ensureTotals(state);
     const games = state.history.length;
     const remain = Math.max(0, SETTINGS.totalGames - games);
-    $("#playStatus").textContent = `진행: ${games}판 · 남은 판 ${remain}판`;
+    $("#playStatus").textContent = isFinished(state) ? "30판 완료했어요" : `진행: ${games}판 · 남은 판 ${remain}판`;
     $("#board").innerHTML = buildBoard(state);
+    applyFinishedLock();
   } else {
     $("#playStatus").textContent = "";
     $("#board").innerHTML = "";
@@ -279,8 +319,8 @@ function registerPlayers(){
   const inputs = $$("#playerInputs input");
   const names = inputs.map(i=>i.value.trim()).slice(0, SETTINGS.rosterSize);
 
-  if(names.some(n=>!n)) return alert("닉네임은 전부 입력해야 한다.");
-  if(new Set(names).size !== names.length) return alert("닉네임이 중복됐다. 전부 다르게 입력해야 한다.");
+  if(names.some(n=>!n)) return alert("닉네임은 전부 채워줘요");
+  if(new Set(names).size !== names.length) return alert("닉네임이 겹쳐요. 전부 다르게 해줘요");
 
   const prevNames = normalizeNames(state.players).filter(Boolean);
   const prevTotals = state.totals || {};
@@ -331,9 +371,8 @@ function registerPlayers(){
 
 function addRound(){
   const state = window.__state;
-  if(!isRegistered(state)) return alert("먼저 선수 등록을 완료해야 한다.");
-  const games = state.history.length;
-  if(games >= SETTINGS.totalGames) return alert("총 판수를 모두 진행했다.");
+  if(!isRegistered(state)) return alert("먼저 선수 등록부터 해줘요");
+  if(isFinished(state)) return alert("30판이 다 끝났어요");
 
   const inputs = $$("#scoreInputs input");
   const tokens = inputs.map(i=>i.value.trim());
@@ -342,7 +381,7 @@ function addRound(){
   try{
     parsed = tokens.map(parseToken);
   }catch(e){
-    return alert(`입력 오류: ${e.message}`);
+    return alert(`입력 확인해줘요: ${e.message}`);
   }
 
   const byRank = {};
@@ -354,7 +393,7 @@ function addRound(){
   const dup = Object.entries(byRank).filter(([_,arr])=>arr.length >= 2);
   if(dup.length){
     const msg = dup.map(([rk,arr])=>`${rk}등: ${arr.join(", ")}`).join("\n");
-    return alert("등수가 겹쳤다.\n" + msg);
+    return alert("등수가 겹쳤어요\n" + msg);
   }
 
   ensureTotals(state);
@@ -378,8 +417,8 @@ function addRound(){
 
 function undoRound(){
   const state = window.__state;
-  if(!state.history.length) return alert("되돌릴 판이 없다.");
-  if(!confirm("마지막 1판을 되돌릴까?")) return;
+  if(!state.history.length) return alert("되돌릴 판이 아직 없어요");
+  if(!confirm("마지막 1판만 되돌릴까요?")) return;
 
   ensureTotals(state);
   const last = state.history.pop();
@@ -394,7 +433,7 @@ function undoRound(){
 }
 
 function resetAll(){
-  if(!confirm("전부 리셋할까?")) return;
+  if(!confirm("전부 리셋할까요?")) return;
   window.__state = structuredClone(DEFAULT);
   save(window.__state);
   render();
