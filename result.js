@@ -1,5 +1,5 @@
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v1";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v2";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const $ = (s)=>document.querySelector(s);
@@ -55,8 +55,18 @@ function showPhoto(dataUrl){
   box.classList.remove("hidden");
 }
 
+function fmtDiff(n){
+  if(n === 0) return "±0";
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+function mvpBadge(idx){
+  return idx === 0 ? `<span class="mvp">👑 MVP</span>` : "";
+}
+
 function render(payload){
-  $("#stamp").textContent = payload?.at ? fmtKoreanStamp(payload.at) : "";
+  const stampText = $("#stampText");
+  if(stampText) stampText.textContent = payload?.at ? fmtKoreanStamp(payload.at) : "";
 
   const wrap = $("#summary");
   if(!payload?.lines?.length){
@@ -64,21 +74,61 @@ function render(payload){
     return;
   }
 
-  const lines = payload.lines.map(x=>{
-    return `<div class="pill" style="display:flex;gap:10px;justify-content:space-between;align-items:center;">
-      <div style="font-weight:700">${escapeHTML(x.name)}</div>
-      <div style="opacity:.9;flex:1;text-align:left;padding-left:12px;">30판 등수 : ${escapeHTML(x.summary)}</div>
-      <div style="font-weight:800">${x.total}점</div>
-    </div>`;
+  const lines = payload.lines;
+
+  const cards = lines.map((x, idx)=>{
+    const isTop = idx === 0 ? "mvpCard" : "";
+    const diff = idx === 0 ? "" : `<span class="delta">(${fmtDiff(x.diffFromFirst)}점)</span>`;
+
+    const bestRankTxt = x.bestRank ? `${x.bestRank}등` : "-";
+    const bestCountTxt = x.bestRank ? `${x.bestCount}회` : "-";
+
+    return `
+      <div class="resultCard ${isTop}">
+        <div class="resultTop">
+          <div class="name">${escapeHTML(x.name)} ${mvpBadge(idx)}</div>
+          <div class="score">${x.total}점 ${diff}</div>
+        </div>
+
+        <div class="miniStats">
+          <div class="miniBox">
+            <div class="k">최고 등수</div>
+            <div class="v">${bestRankTxt} <span class="subv">(${bestCountTxt})</span></div>
+          </div>
+          <div class="miniBox">
+            <div class="k">골인</div>
+            <div class="v">${x.goalCount}회</div>
+          </div>
+          <div class="miniBox">
+            <div class="k">리타</div>
+            <div class="v">${x.reCount}회</div>
+          </div>
+          <div class="miniBox">
+            <div class="k">초사</div>
+            <div class="v">${x.xCount}회</div>
+          </div>
+        </div>
+
+        <div class="rankSummary">30판 등수 : ${escapeHTML(x.summary)}</div>
+      </div>
+    `;
   }).join("");
 
-  wrap.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${lines}</div>`;
+  wrap.innerHTML = `<div class="resultList">${cards}</div>`;
+}
+
+function removePhoto(){
+  localStorage.removeItem(PHOTO_KEY);
+  showPhoto("");
+  const input = $("#photo");
+  if(input) input.value = "";
 }
 
 function bind(){
-  $("#back").onclick = ()=>history.back();
+  $("#back").onclick = ()=>{ location.href = "index.html"; };
+  $("#removePhoto").onclick = removePhoto;
 
-  $("#photo").addEventListener("change", async (e)=>{
+  $("#photo").addEventListener("change", (e)=>{
     const f = e.target.files?.[0];
     if(!f) return;
     const reader = new FileReader();
@@ -94,8 +144,10 @@ function bind(){
 function init(){
   setTheme(localStorage.getItem(THEME_KEY) || "dark");
   bind();
+
   const payload = loadPayload();
   render(payload);
+
   showPhoto(loadPhoto());
 }
 
