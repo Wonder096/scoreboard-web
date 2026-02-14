@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header class="top">
+  <div class="wrap settleWrap">
+    <header class="top settleTop">
       <div class="brand">
         <h1>정산</h1>
-        <p class="sub" id="stamp"></p>
+        <p class="sub" id="stampText"></p>
       </div>
+      <div class="stamp" id="stamp">FINAL RESULT</div>
     </header>
 
     <section class="card">
@@ -20,13 +21,21 @@
         <h2>사진</h2>
         <div class="hint">원하는 사진 올리면 정산 화면에 같이 보여줍니다.</div>
       </div>
+
       <div class="row">
-        <input id="photo" type="file" accept="image/*" />
+        <label class="fileBtn">
+          <input id="photo" type="file" accept="image/*" />
+          사진 올리기
+        </label>
+        <button id="removePhoto" class="ghost">사진 제거</button>
         <div class="spacer"></div>
-        <button id="back" class="ghost">돌아가기</button>
+        <button id="back" class="ghost">점수판 돌아가기</button>
       </div>
+
       <div id="photoBox" class="photoBox hidden">
-        <img id="photoImg" alt="photo" />
+        <div class="frame">
+          <img id="photoImg" alt="photo" />
+        </div>
       </div>
     </section>
 
