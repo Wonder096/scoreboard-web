@@ -56,7 +56,7 @@ function setTheme(theme){
   document.documentElement.setAttribute("data-theme", t);
   localStorage.setItem(THEME_KEY, t);
   const btn = $("#themeToggle");
-  if(btn) btn.textContent = `다크모드: ${t === "dark" ? "ON" : "OFF"}`;
+  if(btn) btn.textContent = `다크모드 ${t === "dark" ? "ON" : "OFF"}`;
 }
 
 function initTheme(){
