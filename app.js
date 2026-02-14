@@ -1,4 +1,4 @@
-const KEY = "talse_runner_scoreboard_v3";
+const KEY = "talse_runner_scoreboard_v5";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const SETTINGS = {
@@ -25,6 +25,11 @@ function safeInt(v, d=0){
   return Number.isFinite(n) ? n : d;
 }
 
+function navType(){
+  const e = performance.getEntriesByType?.("navigation")?.[0];
+  return e?.type || "navigate";
+}
+
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
@@ -49,7 +54,8 @@ function setTheme(theme){
   const t = theme === "light" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", t);
   localStorage.setItem(THEME_KEY, t);
-  $("#themeToggle").textContent = `다크모드: ${t === "dark" ? "ON" : "OFF"}`;
+  const btn = $("#themeToggle");
+  if(btn) btn.textContent = `다크모드: ${t === "dark" ? "ON" : "OFF"}`;
 }
 
 function initTheme(){
@@ -123,7 +129,9 @@ function buildBoard(state){
   const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
 
   const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
-  const diff = currentTotal - maxTotal;
+  const maxSoFar = SETTINGS.maxPerGame * games;
+  const shortfall = Math.max(0, maxSoFar - currentTotal);
+  const bestPossibleFinal = maxTotal - shortfall;
 
   const names = normalizeNames(state.players).filter(Boolean);
   const rows = names.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
@@ -132,7 +140,7 @@ function buildBoard(state){
     <div class="kpi">
       <div class="box">
         <div class="t">현재 점수</div>
-        <div class="v">${currentTotal}</div>
+        <div class="v">${currentTotal}점</div>
       </div>
       <div class="box">
         <div class="t">남은 판</div>
@@ -140,7 +148,7 @@ function buildBoard(state){
       </div>
       <div class="box">
         <div class="t">최고 점수</div>
-        <div class="v">${maxTotal}점 <span class="diff">(${fmtSigned(diff)})</span></div>
+        <div class="v">${bestPossibleFinal}점 <span class="diff">(기준 ${maxTotal}점 대비 ${fmtSigned(bestPossibleFinal - maxTotal)})</span></div>
       </div>
     </div>
   `;
@@ -160,10 +168,37 @@ function buildBoard(state){
 function lockRegisterUI(lock){
   $$("#playerInputs input").forEach(i=>{ i.disabled = !!lock; });
   $("#savePlayers").style.display = lock ? "none" : "inline-flex";
+  const editBtn = $("#editPlayers");
+  if(editBtn) editBtn.style.display = lock ? "inline-flex" : "none";
+}
+
+function ensureEditButton(){
+  const row = $("#registerCard .row");
+  if(!row) return;
+  if($("#editPlayers")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "editPlayers";
+  btn.className = "ghost";
+  btn.textContent = "닉네임 수정";
+  btn.style.display = "none";
+  row.insertBefore(btn, row.querySelector("#regStatus"));
+
+  btn.onclick = ()=>{
+    const state = window.__state;
+    if(!isRegistered(state)) return;
+
+    $$("#playerInputs input").forEach(i=>{ i.disabled = false; });
+    $("#savePlayers").style.display = "inline-flex";
+    btn.style.display = "none";
+    $("#regStatus").textContent = "수정 중";
+  };
 }
 
 function render(){
   const state = window.__state;
+
+  ensureEditButton();
 
   const pWrap = $("#playerInputs");
   pWrap.innerHTML = "";
@@ -171,14 +206,12 @@ function render(){
     const inp = document.createElement("input");
     inp.placeholder = `${i+1}번 닉네임`;
     inp.value = state.players[i] || "";
-    inp.dataset.idx = String(i);
     pWrap.appendChild(inp);
   }
 
   const registered = isRegistered(state);
 
   $("#regStatus").textContent = registered ? "등록 완료" : "미등록";
-
   lockRegisterUI(registered);
 
   $("#scoreCard").classList.toggle("hidden", !registered);
@@ -199,8 +232,12 @@ function render(){
 
     const inp = document.createElement("input");
     inp.value = "";
-    inp.dataset.idx = String(i);
-    inp.dataset.name = names[i] || `${i+1}번`;
+    inp.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter"){
+        e.preventDefault();
+        addRound();
+      }
+    });
     wrap.appendChild(inp);
 
     sWrap.appendChild(wrap);
@@ -223,21 +260,62 @@ function registerPlayers(){
   const inputs = $$("#playerInputs input");
   const names = inputs.map(i=>i.value.trim()).slice(0, SETTINGS.rosterSize);
 
-  if(names.some(n=>!n)) return alert("닉네임은 전부 입력해야 한다.");
-  if(new Set(names).size !== names.length) return alert("닉네임이 중복됐다. 전부 다르게 입력해야 한다.");
+  if(names.some(n=>!n)) return alert("닉네임은 전부 입력해야함.");
+  if(new Set(names).size !== names.length) return alert("닉네임이 중복됨, 전부 다르게 입력해야함.");
+
+  const prevNames = normalizeNames(state.players).filter(Boolean);
+  const prevTotals = state.totals || {};
+  const prevHistory = state.history || [];
+
+  const hasProgress = prevHistory.length > 0;
+
+  if(!hasProgress){
+    state.players = names;
+    state.totals = Object.fromEntries(names.map(n=>[n,0]));
+    state.history = [];
+    save(state);
+    render();
+    return;
+  }
+
+  const map = {};
+  for(let i=0;i<Math.min(prevNames.length, names.length);i++){
+    map[prevNames[i]] = names[i];
+  }
+
+  const newTotals = {};
+  for(const oldName of prevNames){
+    const nn = map[oldName] || oldName;
+    newTotals[nn] = (newTotals[nn] || 0) + safeInt(prevTotals[oldName], 0);
+  }
+
+  for(const nn of names){
+    if(newTotals[nn] == null) newTotals[nn] = 0;
+  }
+
+  const newHistory = prevHistory.map(r=>{
+    const delta = r?.delta || {};
+    const nd = {};
+    for(const oldName of Object.keys(delta)){
+      const nn = map[oldName] || oldName;
+      nd[nn] = (nd[nn] || 0) + safeInt(delta[oldName],0);
+    }
+    return { ...r, delta: nd };
+  });
 
   state.players = names;
-  state.totals = Object.fromEntries(names.map(n=>[n,0]));
-  state.history = [];
+  state.totals = newTotals;
+  state.history = newHistory;
+
   save(state);
   render();
 }
 
 function addRound(){
   const state = window.__state;
-  if(!isRegistered(state)) return alert("먼저 선수 등록을 완료해야 한다.");
+  if(!isRegistered(state)) return alert("먼저 선수 등록을 완료해야함.");
   const games = state.history.length;
-  if(games >= SETTINGS.totalGames) return alert("총 판수를 모두 진행했다.");
+  if(games >= SETTINGS.totalGames) return alert("총 판수를 모두 진행했음");
 
   const inputs = $$("#scoreInputs input");
   const tokens = inputs.map(i=>i.value.trim());
@@ -258,7 +336,7 @@ function addRound(){
   const dup = Object.entries(byRank).filter(([_,arr])=>arr.length >= 2);
   if(dup.length){
     const msg = dup.map(([rk,arr])=>`${rk}등: ${arr.join(", ")}`).join("\n");
-    return alert("등수가 겹쳤다.\n" + msg);
+    return alert("등수가 겹쳤음.\n" + msg);
   }
 
   ensureTotals(state);
@@ -282,7 +360,8 @@ function addRound(){
 
 function undoRound(){
   const state = window.__state;
-  if(!state.history.length) return alert("되돌릴 판이 없다.");
+  if(!state.history.length) return alert("되돌릴 판이 없음.");
+  if(!confirm("마지막 1판을 되돌릴까?")) return;
 
   ensureTotals(state);
   const last = state.history.pop();
@@ -316,7 +395,14 @@ function bind(){
 
 function init(){
   initTheme();
-  window.__state = load();
+
+  if(navType() === "reload"){
+    localStorage.removeItem(KEY);
+    window.__state = structuredClone(DEFAULT);
+  } else {
+    window.__state = load();
+  }
+
   bind();
   render();
 }
