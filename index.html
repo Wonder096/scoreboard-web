@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -13,26 +13,23 @@
         <h1>TalseRunner Secure Area</h1>
         <p class="sub">데이터는 본인 브라우저에만 저장됨</p>
       </div>
-      <div class="top-actions">
-        <button id="resetAll" class="danger">리셋</button>
-      </div>
+      <button id="themeToggle" class="ghost">다크모드: ON</button>
     </header>
 
-    <!-- 선수 등록 -->
     <section class="card" id="registerCard">
       <div class="card-head">
         <h2>선수 등록</h2>
-        <div class="hint">인원수는 기본 4명(고정) · 닉네임 중복 불가</div>
+        <div class="hint">인원수 4명(고정) · 닉네임 중복 불가</div>
       </div>
 
       <div id="playerInputs" class="grid"></div>
 
       <div class="row">
         <button id="savePlayers">완료</button>
+        <span id="regStatus" class="pill"></span>
       </div>
     </section>
 
-    <!-- 점수 입력 + 점수판 -->
     <section class="card hidden" id="scoreCard">
       <div class="card-head">
         <h2>점령 점수 입력</h2>
@@ -57,9 +54,13 @@
       <div id="board"></div>
     </section>
 
-    <footer class="foot mono">
-      입력 규칙: 골인(숫자) · 리타(리/리타) · 초사(초/초사)
-    </footer>
+    <section class="card" id="bottomCard">
+      <div class="row">
+        <div class="muted">입력 규칙: 골인(숫자) · 리타(리/리타) · 초사(초/초사)</div>
+        <div class="spacer"></div>
+        <button id="resetAll" class="danger">리셋</button>
+      </div>
+    </section>
   </div>
 
   <script src="app.js"></script>
