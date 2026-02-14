@@ -1,4 +1,4 @@
-const KEY = "talse_runner_scoreboard_v5";
+const KEY = "talse_runner_scoreboard_v6";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const SETTINGS = {
@@ -120,6 +120,17 @@ function fmtSigned(n){
   return (n >= 0 ? `+${n}` : `${n}`);
 }
 
+function computeBestPossibleFinalByBase(state){
+  const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
+  let penalty = 0;
+  for(const row of (state.history || [])){
+    const delta = row?.delta || {};
+    const roundTotal = Object.values(delta).reduce((a,b)=>a+safeInt(b,0),0);
+    if(roundTotal < SETTINGS.basePerGame) penalty += (SETTINGS.basePerGame - roundTotal);
+  }
+  return Math.max(0, maxTotal - penalty);
+}
+
 function buildBoard(state){
   ensureTotals(state);
 
@@ -129,9 +140,7 @@ function buildBoard(state){
   const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
 
   const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
-  const maxSoFar = SETTINGS.maxPerGame * games;
-  const shortfall = Math.max(0, maxSoFar - currentTotal);
-  const bestPossibleFinal = maxTotal - shortfall;
+  const bestPossibleFinal = computeBestPossibleFinalByBase(state);
 
   const names = normalizeNames(state.players).filter(Boolean);
   const rows = names.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
@@ -195,6 +204,12 @@ function ensureEditButton(){
   };
 }
 
+function clearScoreInputs(){
+  $$("#scoreInputs input").forEach(i=>{ i.value = ""; });
+  const first = $("#scoreInputs input");
+  if(first) first.focus();
+}
+
 function render(){
   const state = window.__state;
 
@@ -237,6 +252,10 @@ function render(){
         e.preventDefault();
         addRound();
       }
+      if(e.key === "Escape"){
+        e.preventDefault();
+        clearScoreInputs();
+      }
     });
     wrap.appendChild(inp);
 
@@ -260,13 +279,12 @@ function registerPlayers(){
   const inputs = $$("#playerInputs input");
   const names = inputs.map(i=>i.value.trim()).slice(0, SETTINGS.rosterSize);
 
-  if(names.some(n=>!n)) return alert("닉네임은 전부 입력해야함.");
-  if(new Set(names).size !== names.length) return alert("닉네임이 중복됨, 전부 다르게 입력해야함.");
+  if(names.some(n=>!n)) return alert("닉네임은 전부 입력해야 한다.");
+  if(new Set(names).size !== names.length) return alert("닉네임이 중복됐다. 전부 다르게 입력해야 한다.");
 
   const prevNames = normalizeNames(state.players).filter(Boolean);
   const prevTotals = state.totals || {};
   const prevHistory = state.history || [];
-
   const hasProgress = prevHistory.length > 0;
 
   if(!hasProgress){
@@ -313,9 +331,9 @@ function registerPlayers(){
 
 function addRound(){
   const state = window.__state;
-  if(!isRegistered(state)) return alert("먼저 선수 등록을 완료해야함.");
+  if(!isRegistered(state)) return alert("먼저 선수 등록을 완료해야 한다.");
   const games = state.history.length;
-  if(games >= SETTINGS.totalGames) return alert("총 판수를 모두 진행했음");
+  if(games >= SETTINGS.totalGames) return alert("총 판수를 모두 진행했다.");
 
   const inputs = $$("#scoreInputs input");
   const tokens = inputs.map(i=>i.value.trim());
@@ -336,7 +354,7 @@ function addRound(){
   const dup = Object.entries(byRank).filter(([_,arr])=>arr.length >= 2);
   if(dup.length){
     const msg = dup.map(([rk,arr])=>`${rk}등: ${arr.join(", ")}`).join("\n");
-    return alert("등수가 겹쳤음.\n" + msg);
+    return alert("등수가 겹쳤다.\n" + msg);
   }
 
   ensureTotals(state);
@@ -353,14 +371,14 @@ function addRound(){
 
   state.history.push({ ts: nowISO(), tokens, parsed, delta });
 
-  inputs.forEach(i=>i.value="");
+  clearScoreInputs();
   save(state);
   render();
 }
 
 function undoRound(){
   const state = window.__state;
-  if(!state.history.length) return alert("되돌릴 판이 없음.");
+  if(!state.history.length) return alert("되돌릴 판이 없다.");
   if(!confirm("마지막 1판을 되돌릴까?")) return;
 
   ensureTotals(state);
@@ -389,6 +407,7 @@ function bind(){
   };
   $("#savePlayers").onclick = registerPlayers;
   $("#addRound").onclick = addRound;
+  $("#clearInputs").onclick = clearScoreInputs;
   $("#undoRound").onclick = undoRound;
   $("#resetAll").onclick = resetAll;
 }
