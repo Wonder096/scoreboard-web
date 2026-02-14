@@ -23,6 +23,7 @@
       <div id="playerInputs" class="grid"></div>
       <div class="row">
         <button id="savePlayers">완료</button>
+        <button id="editPlayers" class="ghost hidden">닉네임 수정</button>
         <span id="regStatus" class="pill"></span>
       </div>
     </section>
@@ -54,8 +55,11 @@
         <button id="themeToggle" class="ghost">다크모드 ON</button>
         <button id="undoRound" class="ghost">되돌리기</button>
         <div class="spacer"></div>
+        <button id="exportData" class="ghost">저장</button>
+        <button id="importData" class="ghost">불러오기</button>
         <button id="settle" class="ghost">정산</button>
         <button id="resetAll" class="danger">리셋</button>
+        <input id="importFile" type="file" accept="application/json" class="hidden" />
       </div>
     </section>
   </div>
