@@ -168,6 +168,18 @@ button.ghost{
   box-shadow:none;
 }
 
+button.primary{
+  background:linear-gradient(180deg, #3c78ff, #2c62f1);
+  box-shadow:0 10px 24px rgba(60,120,255,.28);
+  color:white;
+  border:none;
+}
+
+button.primary:hover{
+  filter:brightness(1.08);
+}
+
+
 button.danger{
   background:linear-gradient(180deg, var(--red), var(--red2));
 }
