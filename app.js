@@ -1,7 +1,7 @@
-const KEY = "talse_runner_scoreboard_v9";
+const KEY = "talse_runner_scoreboard_v10";
 const THEME_KEY = "talse_runner_theme_v1";
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v2";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v3";
 
 const SETTINGS = {
   rosterSize: 4,
@@ -23,9 +23,10 @@ function safeInt(v, d=0){
   return Number.isFinite(n) ? n : d;
 }
 
-function navType(){
-  const e = performance.getEntriesByType?.("navigation")?.[0];
-  return e?.type || "navigate";
+function nowISO(){
+  const d = new Date();
+  const p = (n)=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 function load(){
@@ -80,12 +81,6 @@ function ensureTotals(state){
   state.totals = t;
 }
 
-function nowISO(){
-  const d = new Date();
-  const p = (n)=>String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
 function parseToken(token){
   const t = String(token||"").trim().toLowerCase().replace(/\s+/g,"");
   if(!t) throw new Error("입력이 비어 있어요");
@@ -105,15 +100,6 @@ function scoreFrom(p){
   return safeInt(SETTINGS.goalPoints[p.rank], 0);
 }
 
-function escapeHTML(s){
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 function fmtSignedPretty(n){
   if(n === 0) return "±0점";
   return (n > 0 ? `+${n}점` : `${n}점`);
@@ -121,6 +107,15 @@ function fmtSignedPretty(n){
 
 function isFinished(state){
   return (state.history?.length || 0) >= SETTINGS.totalGames;
+}
+
+function escapeHTML(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 function summarizeRanksFull(tags){
@@ -263,34 +258,8 @@ function buildBoard(state){
 
 function lockRegisterUI(lock){
   $$("#playerInputs input").forEach(i=>{ i.disabled = !!lock; });
-  $("#savePlayers").style.display = lock ? "none" : "inline-flex";
-  const editBtn = $("#editPlayers");
-  if(editBtn) editBtn.style.display = lock ? "inline-flex" : "none";
-}
-
-function ensureEditButton(){
-  const row = $("#registerCard .row");
-  if(!row) return;
-  if($("#editPlayers")) return;
-
-  const btn = document.createElement("button");
-  btn.id = "editPlayers";
-  btn.className = "ghost";
-  btn.textContent = "닉네임 수정";
-  btn.style.display = "none";
-  row.insertBefore(btn, row.querySelector("#regStatus"));
-
-  btn.onclick = ()=>{
-    const state = window.__state;
-    if(!isRegistered(state)) return;
-
-    $$("#playerInputs input").forEach(i=>{ i.disabled = false; });
-    $("#savePlayers").style.display = "inline-flex";
-    btn.style.display = "none";
-    $("#regStatus").textContent = "수정 중";
-    const first = $("#playerInputs input");
-    if(first) first.focus();
-  };
+  $("#savePlayers").classList.toggle("hidden", !!lock);
+  $("#editPlayers").classList.toggle("hidden", !lock);
 }
 
 function clearScoreInputs(){
@@ -299,25 +268,15 @@ function clearScoreInputs(){
   if(first) first.focus();
 }
 
-function moveFocus(containerSel, idx){
-  const list = $$(containerSel + " input");
-  const next = list[idx+1];
-  if(next) next.focus();
-}
-
 function applyFinishedLock(){
   const done = isFinished(window.__state);
-  const addBtn = $("#addRound");
-  const clearBtn = $("#clearInputs");
   $$("#scoreInputs input").forEach(i=>{ i.disabled = done; });
-  if(addBtn) addBtn.disabled = done;
-  if(clearBtn) clearBtn.disabled = done;
+  $("#addRound").disabled = done;
+  $("#clearInputs").disabled = done;
 }
 
 function render(){
   const state = window.__state;
-
-  ensureEditButton();
 
   const pWrap = $("#playerInputs");
   pWrap.innerHTML = "";
@@ -325,12 +284,6 @@ function render(){
     const inp = document.createElement("input");
     inp.placeholder = `${ORD[i]} 닉네임`;
     inp.value = state.players[i] || "";
-    inp.addEventListener("keydown",(e)=>{
-      if(e.key === "Enter"){
-        e.preventDefault();
-        moveFocus("#playerInputs", i);
-      }
-    });
     pWrap.appendChild(inp);
   }
 
@@ -356,11 +309,11 @@ function render(){
     wrap.appendChild(lab);
 
     const inp = document.createElement("input");
-    inp.value = "";
-    inp.addEventListener("keydown", (e)=>{
+    inp.addEventListener("keydown",(e)=>{
       if(e.key === "Enter"){
         e.preventDefault();
-        if(i < SETTINGS.rosterSize - 1) moveFocus("#scoreInputs", i);
+        const list = $$("#scoreInputs input");
+        if(i < list.length - 1) list[i+1].focus();
         else addRound();
       }
       if(e.key === "Escape"){
@@ -380,7 +333,7 @@ function render(){
     $("#playStatus").textContent = isFinished(state) ? "30판 완료했어요" : `진행: ${games}판 · 남은 판 ${remain}판`;
     $("#board").innerHTML = buildBoard(state);
     applyFinishedLock();
-  } else {
+  }else{
     $("#playStatus").textContent = "";
     $("#board").innerHTML = "";
   }
@@ -394,8 +347,7 @@ function registerPlayers(){
   if(names.some(n=>!n)) return alert("닉네임은 전부 채워줘요");
   if(new Set(names).size !== names.length) return alert("닉네임이 겹쳐요. 전부 다르게 해줘요");
 
-  const prevHistory = state.history || [];
-  const hasProgress = prevHistory.length > 0;
+  const hasProgress = (state.history || []).length > 0;
 
   if(!hasProgress){
     state.players = names;
@@ -424,7 +376,7 @@ function registerPlayers(){
     if(newTotals[nn] == null) newTotals[nn] = 0;
   }
 
-  const newHistory = prevHistory.map(r=>{
+  const newHistory = (state.history || []).map(r=>{
     const delta = r?.delta || {};
     const nd = {};
     for(const oldName of Object.keys(delta)){
@@ -440,6 +392,15 @@ function registerPlayers(){
 
   save(state);
   render();
+}
+
+function editPlayers(){
+  $$("#playerInputs input").forEach(i=>{ i.disabled = false; });
+  $("#savePlayers").classList.remove("hidden");
+  $("#editPlayers").classList.add("hidden");
+  $("#regStatus").textContent = "수정 중";
+  const first = $("#playerInputs input");
+  if(first) first.focus();
 }
 
 function addRound(){
@@ -545,14 +506,14 @@ function settle(){
       goalCount: safeInt(st.goalCount, 0),
       reCount: safeInt(st.reCount, 0),
       xCount: safeInt(st.xCount, 0),
-      summary: String(st.summary || "-")
+      summary: String(st.summary || "-"),
+      isMvp: idx === 0
     };
   });
 
   const payload = {
     at: nowISO(),
     players,
-    totals: state.totals,
     lines
   };
 
@@ -560,29 +521,89 @@ function settle(){
   location.href = "result.html";
 }
 
+function exportData(){
+  const state = window.__state;
+  const pack = {
+    app: "TalesRunner Conquest Scoreboard",
+    savedAt: nowISO(),
+    theme: localStorage.getItem(THEME_KEY) || "dark",
+    state,
+    settlePhoto: localStorage.getItem(PHOTO_KEY) || ""
+  };
+  const blob = new Blob([JSON.stringify(pack)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `talse_runner_score_${pack.savedAt.replaceAll(":","").replaceAll(" ","_")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importData(){
+  $("#importFile").click();
+}
+
+function handleImportFile(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const pack = JSON.parse(String(reader.result || "{}"));
+      const theme = pack?.theme === "light" ? "light" : "dark";
+      const state = pack?.state;
+
+      if(!state || !Array.isArray(state.players) || !Array.isArray(state.history) || typeof state.totals !== "object"){
+        alert("불러오기 파일 형식이 달라요");
+        return;
+      }
+
+      localStorage.setItem(THEME_KEY, theme);
+      localStorage.setItem(KEY, JSON.stringify(state));
+      if(typeof pack?.settlePhoto === "string") localStorage.setItem(PHOTO_KEY, pack.settlePhoto);
+      else localStorage.removeItem(PHOTO_KEY);
+
+      setTheme(theme);
+      window.__state = load();
+      render();
+      alert("불러오기 완료했어요");
+    }catch{
+      alert("불러오기 실패했어요");
+    }
+  };
+  reader.readAsText(file, "utf-8");
+}
+
 function bind(){
   $("#themeToggle").onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme") || "dark";
     setTheme(cur === "dark" ? "light" : "dark");
   };
+
   $("#savePlayers").onclick = registerPlayers;
+  $("#editPlayers").onclick = editPlayers;
+
   $("#addRound").onclick = addRound;
   $("#clearInputs").onclick = clearScoreInputs;
+
   $("#undoRound").onclick = undoRound;
   $("#resetAll").onclick = resetAll;
   $("#settle").onclick = settle;
+
+  $("#exportData").onclick = exportData;
+  $("#importData").onclick = importData;
+
+  $("#importFile").addEventListener("change",(e)=>{
+    const f = e.target.files?.[0];
+    if(!f) return;
+    e.target.value = "";
+    handleImportFile(f);
+  });
 }
 
 function init(){
   initTheme();
-
-  if(navType() === "reload"){
-    localStorage.removeItem(KEY);
-    window.__state = structuredClone(DEFAULT);
-  } else {
-    window.__state = load();
-  }
-
+  window.__state = load();
   bind();
   render();
 }
