@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TalesRunner Conquest Scoreboard</title>
+  <title>TR Conquest Scoreboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,7 +11,7 @@
     <header class="top">
       <div class="brand">
         <h1>TalesRunner Conquest Scoreboard</h1>
-        <p class="sub">재접속해도 리셋안하면 데이터는 유지 · 제작 Xesi </p>
+        <p class="sub">재접속해도 리셋안하면 데이터는 유지 · 제작 Xesi</p>
       </div>
     </header>
 
@@ -20,9 +20,7 @@
         <h2>선수 등록</h2>
         <div class="hint">인원은 4명 고정 · 닉네임은 중복 불가</div>
       </div>
-
       <div id="playerInputs" class="grid"></div>
-
       <div class="row">
         <button id="savePlayers">완료</button>
         <span id="regStatus" class="pill"></span>
@@ -31,12 +29,10 @@
 
     <section class="card hidden" id="scoreCard">
       <div class="card-head">
-        <h2>점령전 점수 입력</h2>
+        <h2>점령 점수 입력</h2>
         <div class="hint">골인(숫자·N등) · 리타(리/리타) · 초사(초/초사) / 예시 → 1 / 2리 / 3초</div>
       </div>
-
       <div id="scoreInputs" class="grid"></div>
-
       <div class="row">
         <button id="addRound">점수 추가</button>
         <button id="clearInputs" class="ghost">다시 입력</button>
@@ -48,7 +44,7 @@
     <section class="card hidden" id="boardCard">
       <div class="card-head">
         <h2>점수판</h2>
-        <div class="hint">※ 판수 → 30판 · 최고점수 → 31320점 </div>
+        <div class="hint">※ 판수 → 30판 · 최고점수 → 31320점</div>
       </div>
       <div id="board"></div>
     </section>
@@ -58,6 +54,7 @@
         <button id="themeToggle" class="ghost">다크모드 ON</button>
         <button id="undoRound" class="ghost">되돌리기</button>
         <div class="spacer"></div>
+        <button id="settle" class="ghost">정산</button>
         <button id="resetAll" class="danger">리셋</button>
       </div>
     </section>
