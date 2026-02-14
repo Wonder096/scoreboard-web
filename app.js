@@ -542,7 +542,16 @@ function exportData(){
 }
 
 function importData(){
-  $("#importFile").click();
+  const input = $("#importFile");
+  if(!input) return;
+  input.value = "";
+  try{
+    if(typeof input.showPicker === "function"){
+      input.showPicker();
+      return;
+    }
+  }catch{}
+  input.click();
 }
 
 function handleImportFile(file){
