@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TalseRunner Secure Area</title>
+  <title>TalesRunner Conquest Scoreboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="wrap">
     <header class="top">
       <div class="brand">
-        <h1>TalseRunner Secure Area</h1>
-        <p class="sub">데이터는 따로 저장되지 않음.</p>
+        <h1>TalesRunner Conquest Scoreboard</h1>
+        <p class="sub">데이터는 본인 브라우저에만 저장됨</p>
       </div>
       <button id="themeToggle" class="ghost">다크모드: ON</button>
     </header>
@@ -33,7 +33,7 @@
     <section class="card hidden" id="scoreCard">
       <div class="card-head">
         <h2>점령 점수 입력</h2>
-        <div class="hint">예: <b>1</b> / <b>2리</b> / <b>3초</b> (골인=숫자만)</div>
+        <div class="hint">골인(숫자) · 리타(리/리타) · 초사(초/초사)</div>
       </div>
 
       <div id="scoreInputs" class="grid"></div>
@@ -49,7 +49,7 @@
     <section class="card hidden" id="boardCard">
       <div class="card-head">
         <h2>점수판</h2>
-        <div class="hint">현재 점수/판수 진행 상황 요약</div>
+        <div class="hint">총 판수는 30판 기준으로 된다</div>
       </div>
       <div id="board"></div>
     </section>
