@@ -381,7 +381,7 @@ function addRound(){
   try{
     parsed = tokens.map(parseToken);
   }catch(e){
-    return alert(`입력 확인해줘요: ${e.message}`);
+    return alert(`입력 확인 ※ ${e.message}`);
   }
 
   const byRank = {};
