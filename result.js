@@ -55,13 +55,11 @@ function showPhoto(dataUrl){
   box.classList.remove("hidden");
 }
 
-function fmtDiff(n){
-  if(n === 0) return "±0";
-  return n > 0 ? `+${n}` : `${n}`;
-}
-
-function mvpBadge(idx){
-  return idx === 0 ? `<span class="mvp">👑 MVP</span>` : "";
+function removePhoto(){
+  localStorage.removeItem(PHOTO_KEY);
+  showPhoto("");
+  const input = $("#photo");
+  if(input) input.value = "";
 }
 
 function render(payload){
@@ -74,54 +72,28 @@ function render(payload){
     return;
   }
 
-  const lines = payload.lines;
-
-  const cards = lines.map((x, idx)=>{
-    const isTop = idx === 0 ? "mvpCard" : "";
-    const diff = idx === 0 ? "" : `<span class="delta">(${fmtDiff(x.diffFromFirst)}점)</span>`;
-
-    const bestRankTxt = x.bestRank ? `${x.bestRank}등` : "-";
-    const bestCountTxt = x.bestRank ? `${x.bestCount}회` : "-";
+  const blocks = payload.lines.map((x)=>{
+    const name = escapeHTML(x.name);
+    const total = `${x.total}점`;
+    const goal = `${x.goalCount}번`;
+    const re = `${x.reCount}번`;
+    const xs = `${x.xCount}번`;
+    const ranks = escapeHTML(x.summary);
 
     return `
-      <div class="resultCard ${isTop}">
-        <div class="resultTop">
-          <div class="name">${escapeHTML(x.name)} ${mvpBadge(idx)}</div>
-          <div class="score">${x.total}점 ${diff}</div>
-        </div>
-
-        <div class="miniStats">
-          <div class="miniBox">
-            <div class="k">최고 등수</div>
-            <div class="v">${bestRankTxt} <span class="subv">(${bestCountTxt})</span></div>
-          </div>
-          <div class="miniBox">
-            <div class="k">골인</div>
-            <div class="v">${x.goalCount}회</div>
-          </div>
-          <div class="miniBox">
-            <div class="k">리타</div>
-            <div class="v">${x.reCount}회</div>
-          </div>
-          <div class="miniBox">
-            <div class="k">초사</div>
-            <div class="v">${x.xCount}회</div>
-          </div>
-        </div>
-
-        <div class="rankSummary">30판 등수 : ${escapeHTML(x.summary)}</div>
+      <div class="finalBlock">
+        <div class="finalTitle">✨ ${name} ✨</div>
+        <div class="finalLine">━━━━━━━━━━━━━━━━━━━━</div>
+        <div class="finalRow"><span class="k">최종점수</span><span class="v">→ ${total}</span></div>
+        <div class="finalRow"><span class="k">골인 수</span><span class="v">→ ${goal}</span></div>
+        <div class="finalRow"><span class="k">리타 수</span><span class="v">→ ${re}</span></div>
+        <div class="finalRow"><span class="k">초사 수</span><span class="v">→ ${xs}</span></div>
+        <div class="finalRow finalRanks"><span class="k">30판 등수</span><span class="v">→ ${ranks}</span></div>
       </div>
     `;
   }).join("");
 
-  wrap.innerHTML = `<div class="resultList">${cards}</div>`;
-}
-
-function removePhoto(){
-  localStorage.removeItem(PHOTO_KEY);
-  showPhoto("");
-  const input = $("#photo");
-  if(input) input.value = "";
+  wrap.innerHTML = `<div class="finalList">${blocks}</div>`;
 }
 
 function bind(){
@@ -144,10 +116,7 @@ function bind(){
 function init(){
   setTheme(localStorage.getItem(THEME_KEY) || "dark");
   bind();
-
-  const payload = loadPayload();
-  render(payload);
-
+  render(loadPayload());
   showPhoto(loadPhoto());
 }
 
