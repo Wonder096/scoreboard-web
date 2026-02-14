@@ -13,7 +13,6 @@
   --radius:18px;
   --radius2:14px;
   --pad:18px;
-  --pad2:14px;
   --gap:14px;
   --blue:#3c78ff;
   --blue2:#2c62f1;
@@ -37,6 +36,7 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box}
 html,body{height:100%}
+
 body{
   margin:0;
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;
@@ -95,14 +95,12 @@ body{
 .card-head h2{
   margin:0;
   font-size:18px;
-  letter-spacing:.2px;
 }
 
 .hint{
   color:var(--muted);
   font-size:12.5px;
   text-align:right;
-  line-height:1.3;
 }
 
 .grid{
@@ -111,40 +109,31 @@ body{
   gap:10px;
 }
 
-.input-wrap{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
 .label{
   font-size:12.5px;
   color:var(--muted);
-  padding-left:2px;
+  margin-bottom:6px;
 }
 
-input[type="text"], input:not([type]), .grid input{
+input{
   width:100%;
   background:rgba(0,0,0,.18);
   border:1px solid var(--border2);
   color:var(--text);
   border-radius:14px;
-  padding:12px 12px;
+  padding:12px;
   outline:none;
   font-size:14px;
-  transition:transform .08s ease, border-color .12s ease, box-shadow .12s ease;
+  transition:all .15s ease;
 }
 
-html[data-theme="light"] input[type="text"],
-html[data-theme="light"] input:not([type]),
-html[data-theme="light"] .grid input{
+html[data-theme="light"] input{
   background:rgba(0,0,0,.03);
 }
 
-.grid input:focus{
+input:focus{
   border-color:rgba(60,120,255,.55);
   box-shadow:0 0 0 3px rgba(60,120,255,.18);
-  transform:translateY(-1px);
 }
 
 .row{
@@ -158,7 +147,6 @@ html[data-theme="light"] .grid input{
 .spacer{flex:1}
 
 button{
-  appearance:none;
   border:none;
   border-radius:14px;
   padding:11px 14px;
@@ -168,47 +156,26 @@ button{
   cursor:pointer;
   background:linear-gradient(180deg, var(--blue), var(--blue2));
   box-shadow:0 10px 24px rgba(60,120,255,.22);
-  transition:transform .08s ease, filter .12s ease, opacity .12s ease;
+  transition:all .15s ease;
 }
 
-button:hover{filter:brightness(1.06)}
-button:active{transform:translateY(1px)}
-button:disabled{opacity:.45; cursor:not-allowed; filter:none; transform:none}
+button:hover{filter:brightness(1.05)}
+button:disabled{opacity:.4; cursor:not-allowed}
 
 button.ghost{
   background:rgba(255,255,255,.06);
-  color:var(--text);
   border:1px solid var(--border2);
+  color:var(--text);
   box-shadow:none;
-}
-
-button.ghost:hover{
-  filter:none;
-  background:rgba(255,255,255,.10);
 }
 
 button.danger{
   background:linear-gradient(180deg, var(--red), var(--red2));
-  box-shadow:0 10px 24px rgba(255,59,87,.22);
 }
-
-.pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  border-radius:999px;
-  border:1px solid var(--border2);
-  background:rgba(0,0,0,.16);
-  color:var(--text);
-  font-size:12.5px;
-}
-
-html[data-theme="light"] .pill{background:rgba(0,0,0,.04)}
 
 .kpi{
   display:grid;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-columns:repeat(3, 1fr);
   gap:10px;
   margin-bottom:12px;
 }
@@ -217,11 +184,12 @@ html[data-theme="light"] .pill{background:rgba(0,0,0,.04)}
   background:rgba(0,0,0,.16);
   border:1px solid var(--border2);
   border-radius:var(--radius2);
-  padding:14px 14px;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+  padding:14px;
 }
 
-html[data-theme="light"] .kpi .box{background:rgba(0,0,0,.03)}
+html[data-theme="light"] .kpi .box{
+  background:rgba(0,0,0,.03);
+}
 
 .kpi .t{
   color:var(--muted);
@@ -232,29 +200,29 @@ html[data-theme="light"] .kpi .box{background:rgba(0,0,0,.03)}
   margin-top:6px;
   font-size:20px;
   font-weight:900;
-  letter-spacing:.2px;
 }
 
 .diff{
-  font-weight:700;
-  font-size:12.5px;
-  color:var(--muted);
+  font-size:12px;
   margin-left:6px;
+  color:var(--muted);
 }
 
 .table{
   width:100%;
   border-collapse:separate;
   border-spacing:0;
-  overflow:hidden;
   border-radius:var(--radius2);
   border:1px solid var(--border2);
+  overflow:hidden;
   background:rgba(0,0,0,.14);
 }
 
-html[data-theme="light"] .table{background:rgba(0,0,0,.02)}
+html[data-theme="light"] .table{
+  background:rgba(0,0,0,.02);
+}
 
-.table thead th{
+.table th{
   text-align:left;
   padding:12px 14px;
   font-size:12.5px;
@@ -262,47 +230,44 @@ html[data-theme="light"] .table{background:rgba(0,0,0,.02)}
   border-bottom:1px solid var(--border2);
 }
 
-.table tbody td{
+.table td{
   padding:12px 14px;
   border-bottom:1px solid var(--border2);
   font-size:13.5px;
 }
 
-.table tbody tr:last-child td{border-bottom:none}
-.table tbody tr:hover td{background:rgba(255,255,255,.04)}
-
-.hidden{display:none !important}
+.table tr:last-child td{
+  border-bottom:none;
+}
 
 .photoBox{
   margin-top:12px;
   border-radius:var(--radius2);
   border:1px solid var(--border2);
   background:rgba(0,0,0,.16);
-  padding:12px;
+  padding:10px;
+  overflow:hidden;
 }
 
-html[data-theme="light"] .photoBox{background:rgba(0,0,0,.03)}
+html[data-theme="light"] .photoBox{
+  background:rgba(0,0,0,.03);
+}
 
 .photoBox img{
   width:100%;
-  height:auto;
+  height:320px;
   display:block;
   border-radius:12px;
+  object-fit:cover;
+  object-position:center;
 }
 
-#result .wrap{max-width:980px}
-
 @media (max-width:920px){
-  .grid{grid-template-columns:repeat(2, minmax(0, 1fr))}
+  .grid{grid-template-columns:repeat(2,1fr)}
   .kpi{grid-template-columns:1fr}
-  .brand h1{font-size:24px}
-  .wrap{padding:18px 14px 24px}
-  .card{padding:16px}
 }
 
 @media (max-width:520px){
   .grid{grid-template-columns:1fr}
-  .card-head{flex-direction:column; align-items:flex-start}
-  .hint{text-align:left}
-  button{width:auto}
+  .photoBox img{height:220px}
 }
