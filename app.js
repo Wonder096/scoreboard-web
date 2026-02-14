@@ -1,7 +1,7 @@
-const KEY = "talse_runner_scoreboard_v10";
+const KEY = "talse_runner_scoreboard_v11";
 const THEME_KEY = "talse_runner_theme_v1";
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v3";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v4";
 
 const SETTINGS = {
   rosterSize: 4,
@@ -275,6 +275,19 @@ function applyFinishedLock(){
   $("#clearInputs").disabled = done;
 }
 
+function updateSettleButtonState(state){
+  const settleBtn = $("#settle");
+  if(!settleBtn) return;
+
+  if(isRegistered(state) && isFinished(state)){
+    settleBtn.classList.add("primary","settleReady");
+    settleBtn.classList.remove("ghost");
+  }else{
+    settleBtn.classList.remove("primary","settleReady");
+    if(!settleBtn.classList.contains("ghost")) settleBtn.classList.add("ghost");
+  }
+}
+
 function render(){
   const state = window.__state;
 
@@ -333,9 +346,11 @@ function render(){
     $("#playStatus").textContent = isFinished(state) ? "30판 완료했어요" : `진행: ${games}판 · 남은 판 ${remain}판`;
     $("#board").innerHTML = buildBoard(state);
     applyFinishedLock();
+    updateSettleButtonState(state);
   }else{
     $("#playStatus").textContent = "";
     $("#board").innerHTML = "";
+    updateSettleButtonState(state);
   }
 }
 
@@ -474,6 +489,8 @@ function undoRound(){
 function resetAll(){
   if(!confirm("전부 리셋할까요?")) return;
   window.__state = structuredClone(DEFAULT);
+  localStorage.removeItem(PHOTO_KEY);
+  localStorage.removeItem(PAYLOAD_KEY);
   save(window.__state);
   render();
 }
@@ -501,8 +518,6 @@ function settle(){
       name: r.name,
       total: r.total,
       diffFromFirst: idx === 0 ? 0 : (r.total - leader),
-      bestRank: safeInt(st.bestRank, 0),
-      bestCount: safeInt(st.bestCount, 0),
       goalCount: safeInt(st.goalCount, 0),
       reCount: safeInt(st.reCount, 0),
       xCount: safeInt(st.xCount, 0),
@@ -587,6 +602,7 @@ function bind(){
   $("#themeToggle").onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme") || "dark";
     setTheme(cur === "dark" ? "light" : "dark");
+    updateSettleButtonState(window.__state);
   };
 
   $("#savePlayers").onclick = registerPlayers;
@@ -604,9 +620,16 @@ function bind(){
 
   $("#importFile").addEventListener("change",(e)=>{
     const f = e.target.files?.[0];
-    if(!f) return;
     e.target.value = "";
+    if(!f) return;
     handleImportFile(f);
+  });
+
+  window.addEventListener("keydown",(e)=>{
+    if(e.key === "F5"){
+      e.preventDefault();
+      resetAll();
+    }
   });
 }
 
