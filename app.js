@@ -1,5 +1,6 @@
-const KEY = "talse_runner_scoreboard_v7";
+const KEY = "talse_runner_scoreboard_v8";
 const THEME_KEY = "talse_runner_theme_v1";
+const PHOTO_KEY = "talse_runner_settle_photo_v1";
 
 const SETTINGS = {
   rosterSize: 4,
@@ -11,12 +12,7 @@ const SETTINGS = {
   xPoints: 0
 };
 
-const DEFAULT = {
-  players: ["", "", "", ""],
-  totals: {},
-  history: []
-};
-
+const DEFAULT = { players: ["", "", "", ""], totals: {}, history: [] };
 const ORD = ["첫번째", "두번째", "세번째", "네번째"];
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
@@ -56,7 +52,7 @@ function setTheme(theme){
   document.documentElement.setAttribute("data-theme", t);
   localStorage.setItem(THEME_KEY, t);
   const btn = $("#themeToggle");
-  if(btn) btn.textContent = `다크모드 ${t === "dark" ? "ON" : "OFF"}`;
+  if(btn) btn.textContent = `다크모드: ${t === "dark" ? "ON" : "OFF"}`;
 }
 
 function initTheme(){
@@ -122,19 +118,58 @@ function fmtSignedPretty(n){
   return (n > 0 ? `+${n}점` : `${n}점`);
 }
 
-function computeBestPossibleFinalByBase(state){
-  const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
-  let penalty = 0;
-  for(const row of (state.history || [])){
-    const delta = row?.delta || {};
-    const roundTotal = Object.values(delta).reduce((a,b)=>a+safeInt(b,0),0);
-    if(roundTotal < SETTINGS.basePerGame) penalty += (SETTINGS.basePerGame - roundTotal);
-  }
-  return Math.max(0, maxTotal - penalty);
-}
-
 function isFinished(state){
   return (state.history?.length || 0) >= SETTINGS.totalGames;
+}
+
+function summarizeRanksFull(tags){
+  const goals = {};
+  const res = {};
+  const xs = {};
+  for(const r of tags){
+    if(!r || r === "-") continue;
+    const s = String(r).trim();
+    const m = s.match(/^(\d+)(.*)$/);
+    if(!m) continue;
+    const rk = safeInt(m[1], 0);
+    const suf = m[2] || "";
+    if(rk < 1 || rk > 8) continue;
+    if(suf === "") goals[rk] = (goals[rk]||0) + 1;
+    else if(suf === "리") res[rk] = (res[rk]||0) + 1;
+    else if(suf === "초") xs[rk] = (xs[rk]||0) + 1;
+  }
+
+  const parts = [];
+  const gk = Object.keys(goals).map(Number).sort((a,b)=>a-b);
+  const rk = Object.keys(res).map(Number).sort((a,b)=>a-b);
+  const xk = Object.keys(xs).map(Number).sort((a,b)=>a-b);
+
+  if(gk.length) parts.push(gk.map(k=>`${k}등×${goals[k]}`).join("·"));
+  if(rk.length) parts.push(`리타(${rk.map(k=>`${k}리×${res[k]}`).join(", ")})`);
+  if(xk.length) parts.push(`초사(${xk.map(k=>`${k}초×${xs[k]}`).join(", ")})`);
+  return parts.length ? parts.join(" - ") : "-";
+}
+
+function computePerPlayerRankTags(state){
+  const names = normalizeNames(state.players);
+  const per = {};
+  for(const n of names) per[n] = [];
+  for(const row of (state.history || [])){
+    const parsed = row?.parsed;
+    if(!Array.isArray(parsed) || parsed.length !== names.length) continue;
+    for(let i=0;i<names.length;i++){
+      const name = names[i];
+      const p = parsed[i];
+      const rk = safeInt(p?.rank, 0);
+      const re = !!p?.re;
+      const x = !!p?.x;
+      if(rk < 1 || rk > 8){ per[name].push("-"); continue; }
+      if(x) per[name].push(`${rk}초`);
+      else if(re) per[name].push(`${rk}리`);
+      else per[name].push(`${rk}`);
+    }
+  }
+  return per;
 }
 
 function buildBoard(state){
@@ -142,11 +177,12 @@ function buildBoard(state){
 
   const games = state.history.length;
   const remain = Math.max(0, SETTINGS.totalGames - games);
-  const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
 
+  const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
   const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
-  const bestPossibleFinal = computeBestPossibleFinalByBase(state);
-  const diff = bestPossibleFinal - maxTotal;
+
+  const maxPossibleFinal = currentTotal + (remain * SETTINGS.maxPerGame);
+  const diff = maxPossibleFinal - maxTotal;
 
   const names = normalizeNames(state.players).filter(Boolean);
   const rows = names.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
@@ -163,7 +199,7 @@ function buildBoard(state){
       </div>
       <div class="box">
         <div class="t">최고 점수</div>
-        <div class="v">${bestPossibleFinal}점 <span class="diff">(${fmtSignedPretty(diff)})</span></div>
+        <div class="v">${maxPossibleFinal}점 <span class="diff">(${fmtSignedPretty(diff)})</span></div>
       </div>
     </div>
   `;
@@ -226,17 +262,12 @@ function moveFocus(containerSel, idx){
 
 function applyFinishedLock(){
   const done = isFinished(window.__state);
-
   const addBtn = $("#addRound");
   const clearBtn = $("#clearInputs");
-  const undoBtn = $("#undoRound");
 
   $$("#scoreInputs input").forEach(i=>{ i.disabled = done; });
-
   if(addBtn) addBtn.disabled = done;
   if(clearBtn) clearBtn.disabled = done;
-
-  if(undoBtn) undoBtn.disabled = false;
 }
 
 function render(){
@@ -285,11 +316,8 @@ function render(){
     inp.addEventListener("keydown", (e)=>{
       if(e.key === "Enter"){
         e.preventDefault();
-        if(i < SETTINGS.rosterSize - 1){
-          moveFocus("#scoreInputs", i);
-        }else{
-          addRound();
-        }
+        if(i < SETTINGS.rosterSize - 1) moveFocus("#scoreInputs", i);
+        else addRound();
       }
       if(e.key === "Escape"){
         e.preventDefault();
@@ -381,7 +409,7 @@ function addRound(){
   try{
     parsed = tokens.map(parseToken);
   }catch(e){
-    return alert(`입력 확인 ※ ${e.message}`);
+    return alert(`입력 확인해줘요: ${e.message}`);
   }
 
   const byRank = {};
@@ -408,7 +436,12 @@ function addRound(){
     state.totals[name] = safeInt(state.totals[name],0) + safeInt(delta[name],0);
   }
 
-  state.history.push({ ts: nowISO(), tokens, parsed, delta });
+  state.history.push({
+    ts: nowISO(),
+    tokens,
+    parsed: parsed.map(p=>({rank:p.rank,re:p.re,x:p.x})),
+    delta
+  });
 
   clearScoreInputs();
   save(state);
@@ -439,6 +472,29 @@ function resetAll(){
   render();
 }
 
+function settle(){
+  const state = window.__state;
+  if(!isRegistered(state)) return alert("선수 등록부터 먼저 해줘요");
+  if(!isFinished(state)) return alert("30판 다 채워야 정산이 열려요");
+
+  ensureTotals(state);
+  const perTags = computePerPlayerRankTags(state);
+  const lines = state.players.map(name=>{
+    const sum = summarizeRanksFull(perTags[name] || []);
+    return { name, summary: sum, total: safeInt(state.totals[name],0) };
+  });
+
+  const payload = {
+    at: nowISO(),
+    players: state.players,
+    totals: state.totals,
+    lines
+  };
+
+  localStorage.setItem("talse_runner_settle_payload_v1", JSON.stringify(payload));
+  location.href = "result.html";
+}
+
 function bind(){
   $("#themeToggle").onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme") || "dark";
@@ -449,6 +505,7 @@ function bind(){
   $("#clearInputs").onclick = clearScoreInputs;
   $("#undoRound").onclick = undoRound;
   $("#resetAll").onclick = resetAll;
+  $("#settle").onclick = settle;
 }
 
 function init(){
