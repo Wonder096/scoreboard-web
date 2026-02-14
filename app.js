@@ -1,9 +1,11 @@
-const KEY = "talse_runner_scoreboard_v2";
+const KEY = "talse_runner_scoreboard_v3";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const SETTINGS = {
   rosterSize: 4,
   totalGames: 30,
+  basePerGame: 1000,
+  maxPerGame: 1044,
   goalPoints: {1:288,2:270,3:252,4:234,5:216,6:198,7:180,8:162},
   retaPoints: {1:144,2:135,3:126,4:116,5:108,6:99,7:90,8:81},
   xPoints: 0
@@ -55,13 +57,17 @@ function initTheme(){
   setTheme(saved || "dark");
 }
 
+function normalizeNames(arr){
+  return arr.map(x=>String(x||"").trim()).slice(0, SETTINGS.rosterSize);
+}
+
 function isRegistered(state){
-  const names = state.players.map(x=>String(x||"").trim());
+  const names = normalizeNames(state.players);
   return names.length === SETTINGS.rosterSize && names.every(Boolean) && new Set(names).size === names.length;
 }
 
 function ensureTotals(state){
-  const names = state.players.map(x=>String(x||"").trim()).slice(0, SETTINGS.rosterSize);
+  const names = normalizeNames(state.players);
   const t = {};
   for(const n of names){
     if(!n) continue;
@@ -79,13 +85,10 @@ function nowISO(){
 function parseToken(token){
   const t = String(token||"").trim().toLowerCase().replace(/\s+/g,"");
   if(!t) throw new Error("빈 입력");
-
   const m = t.match(/^(\d+)(.*)$/);
   if(!m) throw new Error("등수 숫자가 없다");
-
   const rank = safeInt(m[1], 0);
   if(rank < 1 || rank > 8) throw new Error("등수는 1~8만 가능");
-
   const rest = m[2] || "";
   const re = rest.includes("re") || rest.includes("리") || rest.includes("리타");
   const x  = rest.includes("x")  || rest.includes("초") || rest.includes("초사");
@@ -107,21 +110,38 @@ function escapeHTML(s){
     .replaceAll("'","&#039;");
 }
 
+function fmtSigned(n){
+  return (n >= 0 ? `+${n}` : `${n}`);
+}
+
 function buildBoard(state){
   ensureTotals(state);
+
   const games = state.history.length;
   const remain = Math.max(0, SETTINGS.totalGames - games);
-  const totalAll = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
 
-  const players = state.players.map(x=>String(x||"").trim()).filter(Boolean);
-  const rows = players.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
+  const currentTotal = Object.values(state.totals).reduce((a,b)=>a+safeInt(b,0),0);
+
+  const maxTotal = SETTINGS.maxPerGame * SETTINGS.totalGames;
+  const diff = currentTotal - maxTotal;
+
+  const names = normalizeNames(state.players).filter(Boolean);
+  const rows = names.map(n=>[n, safeInt(state.totals[n],0)]).sort((a,b)=>b[1]-a[1]);
 
   const kpi = `
     <div class="kpi">
-      <div class="box"><div class="t">현재 점수</div><div class="v">${totalAll}</div></div>
-      <div class="box"><div class="t">진행</div><div class="v">${games}판</div></div>
-      <div class="box"><div class="t">남은 판</div><div class="v">${remain}판</div></div>
-      <div class="box"><div class="t">총 판수</div><div class="v">${SETTINGS.totalGames}판</div></div>
+      <div class="box">
+        <div class="t">현재 점수</div>
+        <div class="v">${currentTotal}</div>
+      </div>
+      <div class="box">
+        <div class="t">남은 판</div>
+        <div class="v">${remain}판 <span class="diff">(${games}/${SETTINGS.totalGames})</span></div>
+      </div>
+      <div class="box">
+        <div class="t">최고 점수</div>
+        <div class="v">${maxTotal}점 <span class="diff">(${fmtSigned(diff)})</span></div>
+      </div>
     </div>
   `;
 
@@ -135,6 +155,11 @@ function buildBoard(state){
   `;
 
   return kpi + table;
+}
+
+function lockRegisterUI(lock){
+  $$("#playerInputs input").forEach(i=>{ i.disabled = !!lock; });
+  $("#savePlayers").style.display = lock ? "none" : "inline-flex";
 }
 
 function render(){
@@ -154,19 +179,31 @@ function render(){
 
   $("#regStatus").textContent = registered ? "등록 완료" : "미등록";
 
+  lockRegisterUI(registered);
+
   $("#scoreCard").classList.toggle("hidden", !registered);
   $("#boardCard").classList.toggle("hidden", !registered);
 
   const sWrap = $("#scoreInputs");
   sWrap.innerHTML = "";
-  const names = state.players.map(x=>String(x||"").trim());
+  const names = normalizeNames(state.players);
+
   for(let i=0;i<SETTINGS.rosterSize;i++){
-    const name = names[i] || `${i+1}번`;
+    const wrap = document.createElement("div");
+    wrap.className = "input-wrap";
+
+    const lab = document.createElement("div");
+    lab.className = "label";
+    lab.textContent = names[i] || `${i+1}번`;
+    wrap.appendChild(lab);
+
     const inp = document.createElement("input");
-    inp.placeholder = "예: 1 / 2리 / 3초";
+    inp.value = "";
     inp.dataset.idx = String(i);
-    inp.dataset.name = name;
-    sWrap.appendChild(inp);
+    inp.dataset.name = names[i] || `${i+1}번`;
+    wrap.appendChild(inp);
+
+    sWrap.appendChild(wrap);
   }
 
   if(registered){
@@ -283,5 +320,4 @@ function init(){
   bind();
   render();
 }
-
 init();
