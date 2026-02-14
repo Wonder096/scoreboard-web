@@ -1,5 +1,5 @@
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
-const PAYLOAD_KEY = "talse_runner_settle_payload_v4";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v3";
 const THEME_KEY = "talse_runner_theme_v1";
 
 const $ = (s)=>document.querySelector(s);
@@ -10,7 +10,7 @@ function setTheme(theme){
 }
 
 function fmtKoreanTime(iso){
-  const d = new Date(String(iso || "").replace(" ", "T"));
+  const d = new Date(String(iso||"").replace(" ", "T"));
   const y = d.getFullYear();
   const mo = String(d.getMonth()+1).padStart(2,"0");
   const da = String(d.getDate()).padStart(2,"0");
