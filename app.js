@@ -1,6 +1,7 @@
-const KEY = "talse_runner_scoreboard_v8";
+const KEY = "talse_runner_scoreboard_v9";
 const THEME_KEY = "talse_runner_theme_v1";
 const PHOTO_KEY = "talse_runner_settle_photo_v1";
+const PAYLOAD_KEY = "talse_runner_settle_payload_v2";
 
 const SETTINGS = {
   rosterSize: 4,
@@ -12,8 +13,8 @@ const SETTINGS = {
   xPoints: 0
 };
 
-const DEFAULT = { players: ["", "", "", ""], totals: {}, history: [] };
-const ORD = ["첫번째", "두번째", "세번째", "네번째"];
+const DEFAULT = { players: ["","","",""], totals: {}, history: [] };
+const ORD = ["첫번째","두번째","세번째","네번째"];
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
 
@@ -150,7 +151,7 @@ function summarizeRanksFull(tags){
   return parts.length ? parts.join(" - ") : "-";
 }
 
-function computePerPlayerRankTags(state){
+function computePerPlayerTags(state){
   const names = normalizeNames(state.players);
   const per = {};
   for(const n of names) per[n] = [];
@@ -170,6 +171,50 @@ function computePerPlayerRankTags(state){
     }
   }
   return per;
+}
+
+function computePerPlayerStats(state, perTags){
+  const names = normalizeNames(state.players);
+  const out = {};
+  for(const name of names){
+    const tags = perTags[name] || [];
+    let bestRank = 99;
+    let bestCount = 0;
+    let reCount = 0;
+    let xCount = 0;
+    let goalCount = 0;
+
+    for(const t of tags){
+      if(!t || t === "-") continue;
+      const m = String(t).match(/^(\d+)(.*)$/);
+      if(!m) continue;
+      const rk = safeInt(m[1], 0);
+      const suf = m[2] || "";
+      if(rk >= 1 && rk <= 8){
+        if(rk < bestRank){
+          bestRank = rk;
+          bestCount = 1;
+        }else if(rk === bestRank){
+          bestCount += 1;
+        }
+      }
+      if(suf === "리") reCount += 1;
+      else if(suf === "초") xCount += 1;
+      else goalCount += 1;
+    }
+
+    if(bestRank === 99) bestRank = 0;
+
+    out[name] = {
+      bestRank,
+      bestCount,
+      goalCount,
+      reCount,
+      xCount,
+      summary: summarizeRanksFull(tags)
+    };
+  }
+  return out;
 }
 
 function buildBoard(state){
@@ -264,7 +309,6 @@ function applyFinishedLock(){
   const done = isFinished(window.__state);
   const addBtn = $("#addRound");
   const clearBtn = $("#clearInputs");
-
   $$("#scoreInputs input").forEach(i=>{ i.disabled = done; });
   if(addBtn) addBtn.disabled = done;
   if(clearBtn) clearBtn.disabled = done;
@@ -350,8 +394,6 @@ function registerPlayers(){
   if(names.some(n=>!n)) return alert("닉네임은 전부 채워줘요");
   if(new Set(names).size !== names.length) return alert("닉네임이 겹쳐요. 전부 다르게 해줘요");
 
-  const prevNames = normalizeNames(state.players).filter(Boolean);
-  const prevTotals = state.totals || {};
   const prevHistory = state.history || [];
   const hasProgress = prevHistory.length > 0;
 
@@ -363,6 +405,9 @@ function registerPlayers(){
     render();
     return;
   }
+
+  const prevNames = normalizeNames(state.players).filter(Boolean);
+  const prevTotals = state.totals || {};
 
   const map = {};
   for(let i=0;i<Math.min(prevNames.length, names.length);i++){
@@ -478,20 +523,40 @@ function settle(){
   if(!isFinished(state)) return alert("30판 다 채워야 정산이 열려요");
 
   ensureTotals(state);
-  const perTags = computePerPlayerRankTags(state);
-  const lines = state.players.map(name=>{
-    const sum = summarizeRanksFull(perTags[name] || []);
-    return { name, summary: sum, total: safeInt(state.totals[name],0) };
+
+  const perTags = computePerPlayerTags(state);
+  const perStats = computePerPlayerStats(state, perTags);
+
+  const players = normalizeNames(state.players);
+  const rows = players
+    .map(name=>({ name, total: safeInt(state.totals[name],0) }))
+    .sort((a,b)=>b.total-a.total);
+
+  const leader = rows[0]?.total ?? 0;
+
+  const lines = rows.map((r, idx)=>{
+    const st = perStats[r.name] || {};
+    return {
+      name: r.name,
+      total: r.total,
+      diffFromFirst: idx === 0 ? 0 : (r.total - leader),
+      bestRank: safeInt(st.bestRank, 0),
+      bestCount: safeInt(st.bestCount, 0),
+      goalCount: safeInt(st.goalCount, 0),
+      reCount: safeInt(st.reCount, 0),
+      xCount: safeInt(st.xCount, 0),
+      summary: String(st.summary || "-")
+    };
   });
 
   const payload = {
     at: nowISO(),
-    players: state.players,
+    players,
     totals: state.totals,
     lines
   };
 
-  localStorage.setItem("talse_runner_settle_payload_v1", JSON.stringify(payload));
+  localStorage.setItem(PAYLOAD_KEY, JSON.stringify(payload));
   location.href = "result.html";
 }
 
